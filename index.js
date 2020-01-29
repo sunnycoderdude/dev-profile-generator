@@ -3,7 +3,6 @@ const pdf = require("pdfkit");
 const fs = require("fs");
 const axios = require("axios");
 
-
 // get username and favorite color
 
 let username = "";
@@ -32,95 +31,140 @@ inquirer
     // console.log(response.favColor);
     username = response.username;
     favColor = response.favColor;
-
-    // Create a document
-    const doc = new pdf();
-
-    // Pipe its output somewhere, like to a file or HTTP response
-    // See below for browser usage
-    doc.pipe(fs.createWriteStream('resume.pdf'));
-
     
-    // set background to user selection 
-    doc.rect(0, 0, 612, 792)
-    .lineWidth(3)
-    .fillOpacity(0.5)
-    .fillAndStroke(favColor, "#900")
+    
+    axios({
+      url: `https://api.github.com/users/${username}`,
+      method: 'get',
+      // responseType: 'ArrayBuffer'
+      })
+      .then(function(response) {
+        console.log(response.data.following)
+        // return response.data;
+        // const pngBuffer = Buffer.from(response.data.avatar_url);
+        // Create a document
+        const doc = new pdf();
 
-    // ensure text is readable
-    doc.rect(16, 16, 580, 760)
-    .lineWidth(3)
-    .fillOpacity(0.9)
-    .fillAndStroke("white", "#900")
+        // start pdf writer
+        doc.pipe(fs.createWriteStream('resume.pdf'));
 
-    // image background box
-    doc.rect(150, 50, 312, 200)
-    .lineWidth(3)
-    .fillOpacity(0.9)
-    .fillAndStroke("eeee", "#900")
+            // set background to user selection 
+        doc.rect(0, 0, 612, 792)
+        .lineWidth(3)
+        .fillOpacity(0.5)
+        .fillAndStroke(favColor, "#900")
 
-    // text
-    doc
-    .font('Helvetica')
-    .fill('black')
-    .fontSize(25)
-    .text("Hi!", 80, 300, {align: "center"})
+        // ensure text is readable
+        doc.rect(16, 16, 580, 760)
+        .lineWidth(3)
+        .fillOpacity(0.9)
+        .fillAndStroke("white", "#900")
 
-    doc
-    .font('Helvetica')
-    .fill('black')
-    .fontSize(25)
-    .text("My name is " + username, 80, 330, {align: "center"})
+        // image background box
+        doc.rect(150, 50, 312, 312)
+        .lineWidth(3)
+        .fillOpacity(0.9)
+        .fillAndStroke("eeee", "#900")
 
-    doc
-    .font('Helvetica')
-    .fill('black')
-    .fontSize(25)
-    .text("I like to build cool new apps!", 80, 360, {align: "center"})
+        let img = 'headshot.jpeg';
 
-    doc
-    .font('Helvetica')
-    .fill('black')
-    .fontSize(25)
-    .text("Public Repos: ", 80, 500, {align: "left"})
+        // avatar image
+        doc.image(img, 155, 56, {width: 300})
+        
+        // Add the link text
+        doc.fontSize(12)
+          .fillColor('blue')
+          .text('GitHub Page!', 80, 470);
 
-    doc
-    .font('Helvetica')
-    .fill('black')
-    .fontSize(25)
-    .text("Github Stars: ", 80, 560, {align: "left"})
+        // Measure the text
+        const width = doc.widthOfString('Github Page!');
+        const height = doc.currentLineHeight();
 
-    doc
-    .font('Helvetica')
-    .fill('black')
-    .fontSize(25)
-    .text("Followers: ", 80, 500, {align: "right"})
-
-    // Make a request for a user with a given ID
-    axios.get('https://api.github.com/users/sunnycoderdude/following')
-    .then(function (response) {
-    // handle success
-    console.log(response.data.length);
-    following = response.data.length;
-    console.log(following)
-    return following;
-    })
-    .catch(function (error) {
-    // handle error
-    console.log(error);
-    })
-    .finally(function () {
-    // always executed
-    doc
-    .font('Helvetica')
-    .fill('black')
-    .fontSize(25)
-    .text("test", 80, 560, {align: "right"})
-    });
+        // Add the underline and link annotations
+        doc.underline(20, 0, width, height, {color: 'blue'})
+          .link(80, 470, width, height, response.data.html_url);
 
 
-    doc.end();
+        // Add the link text
+        doc.fontSize(12)
+          .fillColor('blue')
+          .text('Location!', 280, 470);
 
+        // Measure the text
+        const width2 = doc.widthOfString('Location!');
+        const height2 = doc.currentLineHeight();
+
+        // Add the underline and link annotations
+        doc.underline(20, 0, width2, height2, {color: 'blue'})
+          .link(280, 470, width2, height2, "https://www.google.com/maps/place/"+response.data.location);
+
+        // Add the link text
+        doc.fontSize(12)
+          .fillColor('blue')
+          .text('Blog!', 480, 470);
+
+        // Measure the text
+        const width3 = doc.widthOfString('Location!');
+        const height3 = doc.currentLineHeight();
+
+        // Add the underline and link annotations
+        doc.underline(20, 0, width3, height3, {color: 'blue'})
+          .link(480, 470, width3, height3, response.data.blog);
+
+        // Hi!
+        doc
+        .font('Helvetica')
+        .fill('black')
+        .fontSize(25)
+        .text("Hi!", 80, 370, {align: "center"})
+
+        // My name is!
+        doc
+        .font('Helvetica')
+        .fill('black')
+        .fontSize(25)
+        .text("My name is " + response.data.name, 80, 400, {align: "center"})
+
+        // short description
+        doc
+        .font('Helvetica')
+        .fill('black')
+        .fontSize(15)
+        .text(response.data.bio, 80, 430, {align: "center"})
+
+        doc
+        .font('Helvetica')
+        .fill('black')
+        .fontSize(25)
+        .text("Public Repos: "+response.data.public_repos, 80, 500, {align: "left"})
+
+        doc
+        .font('Helvetica')
+        .fill('black')
+        .fontSize(25)
+        .text("Github Stars: "+response.data.public_gists, 80, 560, {align: "left"})
+
+        doc
+        .font('Helvetica')
+        .fill('black')
+        .fontSize(25)
+        .text("Followers: "+response.data.followers, 80, 500, {align: "right"})
+
+        doc
+        .font('Helvetica')
+        .fill('black')
+        .fontSize(25)
+        .text("Following: "+response.data.following, 80, 560, {align: "right"})
+
+        doc.end();
+
+      })
+      .then(function(data) {
+        console.log(data);
+      })
+      .catch (function(error) {
+      console.error(error)
+      });
 
 });
 
